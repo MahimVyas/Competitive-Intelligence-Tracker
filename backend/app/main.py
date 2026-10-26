@@ -43,10 +43,14 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def on_startup() -> None:
-    # Tables are initialized explicitly via `start.sh` or `alembic upgrade head`
-    # to avoid async/sync engine issues with SQLite. Call init_db() manually
-    # before starting uvicorn for zero-config local development.
-    pass
+    """Initialize database tables on startup."""
+    try:
+        from app.core.database import init_db
+
+        await init_db()
+    except Exception as exc:  # pragma: no cover - startup resilience
+        # Log but don't crash; individual endpoints will return clear errors
+        print(f"Warning: DB initialization failed on startup: {exc}")
 
 
 # ---------------------------------------------------------------------------
