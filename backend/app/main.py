@@ -18,6 +18,7 @@ from app.schemas.models import (
     CompetitorWithLatest,
     MonitoredURLCreate,
     MonitoredURLRead,
+    ScrapeTrigger,
     ScrapeTriggerResponse,
     ScrapeResult,
     DiffLogRead,
@@ -148,26 +149,23 @@ async def add_url_endpoint(
     tags=["Scrape"],
 )
 async def scrape_trigger_endpoint(
-    all_urls: bool = False,
-    url_id: Optional[UUID] = None,
-    competitor_id: Optional[UUID] = None,
+    payload: ScrapeTrigger,
     db: AsyncSession = Depends(get_db),
 ) -> ScrapeTriggerResponse:
     from app.services.scraper import scrape_url
     from app.services.gemini import analyze_diff
-    from app.core.database import AsyncSessionLocal
 
     urls_to_scan: List[MonitoredURL] = []
 
-    if all_urls:
+    if payload.all_urls:
         urls_to_scan = await crud.get_all_monitored_urls(db)
-    elif url_id:
-        mu = await crud.get_monitored_url(db, url_id)
+    elif payload.url_id:
+        mu = await crud.get_monitored_url(db, payload.url_id)
         if not mu:
             raise HTTPException(status_code=404, detail="Monitored URL not found")
         urls_to_scan = [mu]
-    elif competitor_id:
-        comp = await crud.get_competitor_by_id(db, competitor_id)
+    elif payload.competitor_id:
+        comp = await crud.get_competitor_by_id(db, payload.competitor_id)
         if not comp:
             raise HTTPException(status_code=404, detail="Competitor not found")
         urls_to_scan = list(comp.monitored_urls)
