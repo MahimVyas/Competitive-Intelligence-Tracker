@@ -3,7 +3,7 @@
 import os
 import uuid
 from datetime import datetime
-from typing import List, Optional
+from typing import List
 
 from sqlalchemy import (
     String,
@@ -69,7 +69,7 @@ class Competitor(Base):
         UUID_TYPE, primary_key=True, default=uuid.uuid4
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
-    website_url: Mapped[Optional[str]] = mapped_column(String(1024), nullable=True)
+    website_url: Mapped[str] = mapped_column(String(1024), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -100,7 +100,7 @@ class MonitoredURL(Base):
     page_type: Mapped[str] = mapped_column(
         String(32), nullable=False, default="changelog"
     )  # 'pricing' | 'changelog' | 'features'
-    last_scraped_at: Mapped[Optional[datetime]] = mapped_column(
+    last_scraped_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
 
@@ -167,9 +167,9 @@ class DiffLog(Base):
         index=True,
     )
     has_change: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    headline: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
-    bullets: Mapped[Optional[list]] = mapped_column(JSON_TYPE, nullable=True)
-    category: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    headline: Mapped[str] = mapped_column(String(512), nullable=True)
+    bullets: Mapped[list] = mapped_column(JSON_TYPE, nullable=True)
+    category: Mapped[str] = mapped_column(String(64), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

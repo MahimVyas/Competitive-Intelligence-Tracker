@@ -32,21 +32,49 @@ source "$BACKEND_DIR/.venv/bin/activate"
 
 echo "   Installing Python dependencies..."
 pip install --upgrade pip -q
-pip install -r "$BACKEND_DIR/requirements.txt" -q
 
-echo "   Installing Playwright browser (Chromium)..."
-python -m playwright install chromium -q 2>&1 | tail -1
+# Install core dependencies one-by-one so a single C-extension build failure
+# (common on Python 3.15 / bleeding-edge) doesn't abort the whole setup.
+# asyncpg/greenlet are intentionally omitted — SQLite (aiosqlite) is the default.
+CORE_PKGS=(
+  fastapi==0.115.0
+  uvicorn[standard]==0.32.1
+  pydantic==2.9.2
+  pydantic-settings==2.4.0
+  "sqlalchemy[asyncio]==2.0.39"
+  alembic==1.13.2
+  python-dotenv==1.0.1
+  httpx==0.27.0
+  google-generativeai==0.8.0
+  resend==2.50.0
+  beautifulsoup4==4.12.3
+  tenacity==8.5.0
+  loguru==0.7.2
+)
 
-# Remove old SQLite DB for a clean start (optional — comment out to keep data)
-# rm -f "$BACKEND_DIR/ci_tracker.db"
+for pkg in "${CORE_PKGS[@]}"; do
+  echo "      • $pkg"
+  if ! pip install "$pkg" -q 2>/dev/null; then
+    echo "      ⚠️  $pkg failed (trying --only-binary)..."
+    if ! pip install "$pkg" --only-binary=:all: -q 2>/dev/null; then
+      echo "      ⚠️  $pkg skipped — no Python 3.15 wheel available"
+    fi
+  fi
+done
+
+echo "   Installing optional dependencies..."
+pip install aiosqlite==0.21.0 -q 2>/dev/null || echo "   ⚠️  aiosqlite skipped"
+pip install playwright -q 2>/dev/null || echo "   ⚠️  playwright skipped (Jina Reader is the primary scraper)"
 
 echo "   Initializing database tables..."
+cd "$BACKEND_DIR"
 python -c "
 import asyncio
 from app.core.database import init_db
 asyncio.run(init_db())
 print('   ✅ Database tables created')
-"
+" 2>&1
+cd "$ROOT_DIR"
 
 # ---------------------------------------------------------------------------
 # 2. Start backend

@@ -1,11 +1,11 @@
 # Competitive Intelligence Tracker - Backend (FastAPI)
+# Core dependencies (required for all setups):
 aiosqlite==0.21.0
 fastapi==0.115.0
 uvicorn[standard]==0.32.1
 pydantic==2.9.2
 pydantic-settings==2.4.0
-sqlalchemy[asyncio]==2.0.36
-asyncpg==0.29.0
+sqlalchemy[asyncio]==2.0.39
 alembic==1.13.2
 python-dotenv==1.0.1
 httpx==0.27.0
@@ -15,3 +15,6 @@ playwright==1.48.0
 beautifulsoup4==4.12.3
 tenacity==8.5.0
 loguru==0.7.2
+
+# Optional: PostgreSQL/Supabase driver (only needed if DATABASE_URL uses postgresql+asyncpg)
+# asyncpg==0.29.0  <-- skipped by default; may not compile on Python 3.15
