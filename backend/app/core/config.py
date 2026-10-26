@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     database_url: Optional[str] = Field(default=None, alias="DATABASE_URL")
 
     # --- AI (Google Gemini) ---
-    gemini_api_key: str = Field(..., alias="GEMINI_API_KEY")
+    gemini_api_key: Optional[str] = Field(default=None, alias="GEMINI_API_KEY")
     gemini_model: str = Field(default="gemini-2.5-flash", alias="GEMINI_MODEL")
 
     # --- Notifications (Resend) ---

@@ -64,7 +64,10 @@ done
 
 echo "   Installing optional dependencies..."
 pip install aiosqlite==0.21.0 -q 2>/dev/null || echo "   ⚠️  aiosqlite skipped"
-pip install playwright -q 2>/dev/null || echo "   ⚠️  playwright skipped (Jina Reader is the primary scraper)"
+pip install playwright -q 2>/dev/null || echo "   ⚠️  playwright skipped"
+
+echo "   Installing Playwright Chromium browser..."
+python -m playwright install chromium --with-deps 2>&1 | tail -3 || echo "   ⚠️  Playwright browser install skipped (Jina Reader is the primary scraper)"
 
 echo "   Initializing database tables..."
 cd "$BACKEND_DIR"

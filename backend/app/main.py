@@ -1,7 +1,7 @@
 """FastAPI application entrypoint."""
 
 from datetime import datetime, timezone
-from typing import List
+from typing import List, Optional
 from uuid import UUID
 
 from fastapi import FastAPI, Depends, HTTPException, status
@@ -18,7 +18,6 @@ from app.schemas.models import (
     CompetitorWithLatest,
     MonitoredURLCreate,
     MonitoredURLRead,
-    ScrapeTrigger,
     ScrapeTriggerResponse,
     ScrapeResult,
     DiffLogRead,
@@ -149,7 +148,9 @@ async def add_url_endpoint(
     tags=["Scrape"],
 )
 async def scrape_trigger_endpoint(
-    payload: ScrapeTrigger,
+    all_urls: bool = False,
+    url_id: Optional[UUID] = None,
+    competitor_id: Optional[UUID] = None,
     db: AsyncSession = Depends(get_db),
 ) -> ScrapeTriggerResponse:
     from app.services.scraper import scrape_url
@@ -158,15 +159,15 @@ async def scrape_trigger_endpoint(
 
     urls_to_scan: List[MonitoredURL] = []
 
-    if payload.all_urls:
+    if all_urls:
         urls_to_scan = await crud.get_all_monitored_urls(db)
-    elif payload.url_id:
-        mu = await crud.get_monitored_url(db, payload.url_id)
+    elif url_id:
+        mu = await crud.get_monitored_url(db, url_id)
         if not mu:
             raise HTTPException(status_code=404, detail="Monitored URL not found")
         urls_to_scan = [mu]
-    elif payload.competitor_id:
-        comp = await crud.get_competitor_by_id(db, payload.competitor_id)
+    elif competitor_id:
+        comp = await crud.get_competitor_by_id(db, competitor_id)
         if not comp:
             raise HTTPException(status_code=404, detail="Competitor not found")
         urls_to_scan = list(comp.monitored_urls)
@@ -192,13 +193,24 @@ async def scrape_trigger_endpoint(
 
 async def scrape_and_diff(db: AsyncSession, mu: MonitoredURL) -> ScrapeResult:
     """Scrape a URL, compare hash, run Gemini diff if changed, persist."""
-    from app.services.scraper import scrape_url
-    from app.services.gemini import analyze_diff
+    from app.services.scraper import scrape_url, compute_hash
 
     # 1. Scrape + clean
-    markdown = await scrape_url(mu.url)
+    try:
+        markdown = await scrape_url(mu.url)
+    except Exception as exc:
+        # Scraping failed — record the attempt but don't crash
+        mu.last_scraped_at = datetime.now(timezone.utc)
+        await db.flush()
+        return ScrapeResult(
+            url_id=mu.id,
+            url=mu.url,
+            changed=False,
+            hash="",
+            message=f"Scrape failed: {exc}",
+        )
+
     cleaned = markdown  # scraper already cleans
-    from app.services.scraper import compute_hash
     content_hash = compute_hash(cleaned)
 
     # 2. Compare with latest snapshot

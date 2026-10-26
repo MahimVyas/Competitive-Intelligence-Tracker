@@ -4,6 +4,7 @@ Sends old vs new markdown to Gemini and returns a structured DiffAnalysis.
 """
 
 import json
+import re
 from typing import Optional
 
 import google.generativeai as genai
@@ -12,7 +13,7 @@ from loguru import logger
 from app.core.config import settings
 from app.schemas.models import DiffAnalysis
 
-genai.configure(api_key=settings.gemini_api_key)
+genai.configure(api_key=settings.gemini_api_key or "")
 
 
 _DIFF_SYSTEM_PROMPT = """You are a competitive intelligence analyst. You receive two snapshots
@@ -99,6 +100,3 @@ async def analyze_diff(
         summary_bullets=list(data.get("summary_bullets", []))[:6],
         category=str(data.get("category", "General"))[:64],
     )
-
-
-import re  # noqa: E402  (used above; kept at bottom to avoid import-order lint noise)
