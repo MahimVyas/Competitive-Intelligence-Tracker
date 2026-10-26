@@ -6,6 +6,7 @@ from uuid import UUID
 
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -48,9 +49,10 @@ async def on_startup() -> None:
         from app.core.database import init_db
 
         await init_db()
+        print("✅ Database tables initialized")
     except Exception as exc:  # pragma: no cover - startup resilience
         # Log but don't crash; individual endpoints will return clear errors
-        print(f"Warning: DB initialization failed on startup: {exc}")
+        print(f"⚠️  DB initialization failed on startup: {exc}")
 
 
 # ---------------------------------------------------------------------------
@@ -59,6 +61,16 @@ async def on_startup() -> None:
 @app.get("/health")
 async def health() -> dict:
     return {"status": "ok", "service": settings.app_name, "env": settings.app_env}
+
+
+@app.get("/health/db")
+async def health_db(db: AsyncSession = Depends(get_db)) -> dict:
+    """Check database connectivity."""
+    try:
+        result = await db.execute(select(Competitor).limit(1))
+        return {"status": "ok", "database": "connected"}
+    except Exception as exc:
+        return {"status": "error", "database": str(exc)}
 
 
 # ---------------------------------------------------------------------------
@@ -179,10 +191,21 @@ async def scrape_trigger_endpoint(
     changed_count = 0
 
     for mu in urls_to_scan:
-        result = await scrape_and_diff(db, mu)
-        results.append(result)
-        if result.changed:
-            changed_count += 1
+        try:
+            result = await scrape_and_diff(db, mu)
+            results.append(result)
+            if result.changed:
+                changed_count += 1
+        except Exception as exc:
+            results.append(
+                ScrapeResult(
+                    url_id=mu.id,
+                    url=mu.url,
+                    changed=False,
+                    hash="",
+                    message=f"Error: {exc}",
+                )
+            )
 
     await db.commit()
 

@@ -103,7 +103,7 @@ class ScrapeResult(BaseModel):
     url: str
     changed: bool
     hash: str
-    diff: Optional[DiffLogBase] = None
+    diff: Optional[DiffAnalysis] = None
     message: str
 
 
